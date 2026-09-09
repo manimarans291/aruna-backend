@@ -3,7 +3,6 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 
 const app = express();
-
 const PORT = 3000;
 
 // =========================================================
@@ -17,8 +16,8 @@ app.use(express.json());
 // MONGODB CONNECTION
 // =========================================================
 
-const MONGO_URL =
-    "mongodb://127.0.0.1:27017/arunaproducts";
+// Render Environment Variable
+const MONGO_URL = process.env.MONGODB_URI;
 
 mongoose
     .connect(MONGO_URL)
@@ -26,10 +25,7 @@ mongoose
         console.log("MongoDB connected successfully");
     })
     .catch((error) => {
-        console.error(
-            "MongoDB connection failed:",
-            error.message
-        );
+        console.error("MongoDB connection failed:", error.message);
     });
 
 // =========================================================
@@ -102,23 +98,8 @@ const orderSchema = new mongoose.Schema(
             required: true
         },
 
-        paymentMethod: {
-            type: String,
-            default: "UPI"
-        },
-
         items: {
             type: Array,
-            required: true
-        },
-
-        subtotal: {
-            type: Number,
-            required: true
-        },
-
-        deliveryCharge: {
-            type: Number,
             required: true
         },
 
@@ -162,107 +143,40 @@ app.get("/", (req, res) => {
 // GET ALL PRODUCTS
 // =========================================================
 
-app.get(
-    "/api/products",
-    async (req, res) => {
+app.get("/api/products", async (req, res) => {
 
-        try {
+    try {
 
-            const products =
-                await Product.find()
-                    .sort({
-                        id: 1
-                    });
+        const products =
+            await Product.find()
+                .sort({ id: 1 });
 
-            res.json({
+        res.json({
 
-                success: true,
+            success: true,
 
-                count:
-                    products.length,
+            count:
+                products.length,
 
-                products:
-                    products
+            products:
+                products
 
-            });
+        });
 
-        } catch (error) {
+    } catch (error) {
 
-            res.status(500).json({
+        res.status(500).json({
 
-                success: false,
+            success: false,
 
-                message:
-                    "Failed to get products"
+            message:
+                "Failed to get products"
 
-            });
-
-        }
+        });
 
     }
-);
 
-// =========================================================
-// GET PRODUCTS BY CATEGORY
-// IMPORTANT: THIS MUST COME BEFORE /api/products/:id
-// =========================================================
-
-app.get(
-    "/api/products/category/:category",
-    async (req, res) => {
-
-        try {
-
-            const category =
-                req.params.category
-                    .trim();
-
-            const products =
-                await Product.find({
-
-                    category: {
-                        $regex:
-                            `^${category}$`,
-                        $options: "i"
-                    }
-
-                })
-                    .sort({
-                        id: 1
-                    });
-
-            res.json({
-
-                success: true,
-
-                count:
-                    products.length,
-
-                products:
-                    products
-
-            });
-
-        } catch (error) {
-
-            console.error(
-                "Category API error:",
-                error.message
-            );
-
-            res.status(500).json({
-
-                success: false,
-
-                message:
-                    "Failed to get category products"
-
-            });
-
-        }
-
-    }
-);
+});
 
 // =========================================================
 // GET SINGLE PRODUCT
@@ -275,22 +189,7 @@ app.get(
         try {
 
             const id =
-                Number(
-                    req.params.id
-                );
-
-            if (Number.isNaN(id)) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    message:
-                        "Invalid product ID"
-
-                });
-
-            }
+                Number(req.params.id);
 
             const product =
                 await Product.findOne({
@@ -336,6 +235,64 @@ app.get(
 );
 
 // =========================================================
+// GET PRODUCTS BY CATEGORY
+// =========================================================
+
+app.get(
+    "/api/products/category/:category",
+    async (req, res) => {
+
+        try {
+
+            const category =
+                req.params.category
+                    .trim();
+
+            const products =
+                await Product.find({
+
+                    category: {
+
+                        $regex:
+                            new RegExp(
+                                `^${category}$`,
+                                "i"
+                            )
+
+                    }
+
+                })
+                    .sort({ id: 1 });
+
+            res.json({
+
+                success: true,
+
+                count:
+                    products.length,
+
+                products:
+                    products
+
+            });
+
+        } catch (error) {
+
+            res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Failed to get category products"
+
+            });
+
+        }
+
+    }
+);
+
+// =========================================================
 // SEARCH PRODUCTS
 // =========================================================
 
@@ -355,9 +312,7 @@ app.get(
 
                 const products =
                     await Product.find()
-                        .sort({
-                            id: 1
-                        });
+                        .sort({ id: 1 });
 
                 return res.json({
 
@@ -377,14 +332,15 @@ app.get(
                 await Product.find({
 
                     name: {
+
                         $regex: search,
+
                         $options: "i"
+
                     }
 
                 })
-                    .sort({
-                        id: 1
-                    });
+                    .sort({ id: 1 });
 
             res.json({
 
@@ -475,9 +431,7 @@ app.post(
                 image
             } = req.body;
 
-            // =================================================
             // VALIDATION
-            // =================================================
 
             if (!name) {
 
@@ -531,24 +485,18 @@ app.post(
 
             }
 
-            // =================================================
             // GET NEXT ID
-            // =================================================
 
             const lastProduct =
                 await Product.findOne()
-                    .sort({
-                        id: -1
-                    });
+                    .sort({ id: -1 });
 
             const nextId =
                 lastProduct
                     ? lastProduct.id + 1
                     : 1;
 
-            // =================================================
             // CREATE PRODUCT
-            // =================================================
 
             const newProduct =
                 await Product.create({
@@ -587,11 +535,6 @@ app.post(
 
         } catch (error) {
 
-            console.error(
-                "Add product error:",
-                error.message
-            );
-
             res.status(500).json({
 
                 success: false,
@@ -617,22 +560,7 @@ app.delete(
         try {
 
             const id =
-                Number(
-                    req.params.id
-                );
-
-            if (Number.isNaN(id)) {
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    message:
-                        "Invalid product ID"
-
-                });
-
-            }
+                Number(req.params.id);
 
             const deletedProduct =
                 await Product.findOneAndDelete({
@@ -697,12 +625,10 @@ app.post(
                 phoneNumber,
                 address,
                 items,
-                paymentMethod
+                totalAmount
             } = req.body;
 
-            // =================================================
-            // BASIC VALIDATION
-            // =================================================
+            // VALIDATION
 
             if (!phoneNumber) {
 
@@ -747,140 +673,22 @@ app.post(
 
             }
 
-            // =================================================
-            // CALCULATE ORDER TOTAL FROM MONGODB
-            // =================================================
+            if (
+                totalAmount === undefined
+            ) {
 
-            let calculatedSubtotal = 0;
+                return res.status(400).json({
 
-            const finalItems = [];
+                    success: false,
 
-            for (const item of items) {
-
-                const productId =
-                    Number(
-                        item.productId
-                    );
-
-                const quantity =
-                    Number(
-                        item.quantity
-                    );
-
-                // =================================================
-                // ITEM VALIDATION
-                // =================================================
-
-                if (
-                    !Number.isInteger(productId) ||
-                    productId <= 0 ||
-                    !Number.isInteger(quantity) ||
-                    quantity <= 0
-                ) {
-
-                    return res.status(400).json({
-
-                        success: false,
-
-                        message:
-                            "Invalid order item"
-
-                    });
-
-                }
-
-                // =================================================
-                // FIND PRODUCT IN MONGODB
-                // =================================================
-
-                const product =
-                    await Product.findOne({
-
-                        id:
-                            productId
-
-                    });
-
-                if (!product) {
-
-                    return res.status(400).json({
-
-                        success: false,
-
-                        message:
-                            `Product ${productId} not found`
-
-                    });
-
-                }
-
-                // =================================================
-                // CALCULATE ITEM TOTAL
-                // =================================================
-
-                const itemTotal =
-                    product.price *
-                    quantity;
-
-                calculatedSubtotal +=
-                    itemTotal;
-
-                // =================================================
-                // SAVE FINAL ITEM DETAILS
-                // =================================================
-
-                finalItems.push({
-
-                    productId:
-                        product.id,
-
-                    name:
-                        product.name,
-
-                    price:
-                        product.price,
-
-                    measurement:
-                        product.measurement,
-
-                    quantity:
-                        quantity,
-
-                    itemTotal:
-                        itemTotal
+                    message:
+                        "Total amount is required"
 
                 });
 
             }
 
-            // =================================================
-            // DELIVERY CHARGE
-            // =================================================
-
-            const deliveryCharge =
-                calculatedSubtotal > 0
-                    ? 30
-                    : 0;
-
-            // =================================================
-            // FINAL TOTAL
-            // =================================================
-
-            const calculatedTotal =
-                calculatedSubtotal +
-                deliveryCharge;
-
-            // =================================================
-            // PAYMENT METHOD
-            // =================================================
-
-            const finalPaymentMethod =
-                paymentMethod ||
-                "UPI";
-
-            // =================================================
             // CREATE ORDER
-            // =================================================
 
             const newOrder =
                 await Order.create({
@@ -895,29 +703,16 @@ app.post(
                     address:
                         address,
 
-                    paymentMethod:
-                        finalPaymentMethod,
-
                     items:
-                        finalItems,
-
-                    subtotal:
-                        calculatedSubtotal,
-
-                    deliveryCharge:
-                        deliveryCharge,
+                        items,
 
                     totalAmount:
-                        calculatedTotal,
+                        Number(totalAmount),
 
                     status:
                         "Placed"
 
                 });
-
-            // =================================================
-            // SUCCESS RESPONSE
-            // =================================================
 
             res.status(201).json({
 
@@ -932,11 +727,6 @@ app.post(
             });
 
         } catch (error) {
-
-            console.error(
-                "Create order error:",
-                error.message
-            );
 
             res.status(500).json({
 
